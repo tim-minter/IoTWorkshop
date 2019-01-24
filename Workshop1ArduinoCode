@@ -1,0 +1,169 @@
+/**
+ IBM IoT Foundation managed Device
+
+ Based on code by Ant Elder with alerations by Tim Minter
+ License: Apache License v2
+*/
+#include <ESP8266WiFi.h>
+#include <PubSubClient.h> // https://github.com/knolleary/pubsubclient/releases/tag/v2.3
+#include <ArduinoJson.h> // https://github.com/bblanchon/ArduinoJson/releases/tag/v5.0.7
+#include <Adafruit_NeoPixel.h> //LED (Neopixel) libray to include
+#ifdef __AVR__
+  #include <avr/power.h>
+#endif
+
+
+
+
+//-------- Customise these values -----------
+const char* ssid = "enterWifiNameHere";
+const char* password = "enterWifiPasswordHere";
+
+#define ORG "enterIoTOrgNameHere"
+#define DEVICE_TYPE "enterDeviceTypeHere"
+#define DEVICE_ID "enterDeviceIDHere"
+#define TOKEN "enterTokenHere"
+
+//LED (Neopixel) setup
+#define LED_CONTROL_PIN D1
+#define NUMBER_OF_LEDS_CONNECTED 3 
+//-------- Customise the above values --------
+
+
+
+
+char server[] = ORG ".messaging.internetofthings.ibmcloud.com";
+char authMethod[] = "use-token-auth";
+char token[] = TOKEN;
+char clientId[] = "d:" ORG ":" DEVICE_TYPE ":" DEVICE_ID;
+
+// Topic definitions. Messages being sent via the IoT platform have a Topic (you could consider this a "header") and payload (could be considered as "content").
+// These lines of text are what the topics of the messages sent with from the IoT platform that we are interested in receiving. 
+// These are defined to some extent by the platform being used.
+const char rebootTopic[] = "iotdm-1/mgmt/initiate/device/reboot";
+const char commandTopic[] = "iot-2/cmd/command/fmt/text";
+
+void callback(char* topic, byte* payload, unsigned int payloadLength);
+
+WiFiClient wifiClient;                                    // create a wifi client object
+PubSubClient client(server, 1883, callback, wifiClient);  // create an IoT/messaging object 
+
+// create an object representing the connected LED (Neopixel) strip
+Adafruit_NeoPixel pixels = Adafruit_NeoPixel(NUMBER_OF_LEDS_CONNECTED, LED_CONTROL_PIN, NEO_GRB + NEO_KHZ800);
+
+void setup() {                            // the setup function is a standard function run at start up by the Arduino
+ Serial.begin(115200); Serial.println();  // initate the serial port so output can be viewed in the serial monitor software
+ pixels.begin();                          // This initializes the NeoPixel object.
+ wifiConnect();                           // connect to wifi
+ IoTConnect();                            // connect to the the IoT platform
+ initManagedDevice();                     // subscribe to the relevant IoT channels on the IoT platform
+}
+
+void loop() { // the loop function is a standard function that is run continuously by the Arduino
+ // If we need to do stuff continuously, put it here
+  
+ 
+ if (!client.loop()) {    // if we loose the connection to the client
+   IoTConnect();          // try to connect again
+   initManagedDevice();   // and initiate the device
+ }
+}
+
+// create a connection to wifi
+void wifiConnect() {
+ Serial.print("Connecting to "); Serial.print(ssid);
+ setLEDpixelsColour();
+ WiFi.begin(ssid, password);
+ while (WiFi.status() != WL_CONNECTED) {
+   delay(500);
+   Serial.print(".");
+ }
+ Serial.println("WiFi connected, IP address: "); Serial.println(WiFi.localIP());
+}
+
+// create a connection to the IoT platform
+void IoTConnect() {
+ if (!!!client.connected()) {
+   Serial.print("Reconnecting IoT (MQTT) client to "); Serial.println(server);
+   while (!!!client.connect(clientId, authMethod, token)) {
+     Serial.print(".");
+     delay(500);
+   }
+   Serial.println();
+ }
+}
+
+// subscribe to the two Topics we are interested in. Many topics can be sent by the IoT platform. We subscribe
+void initManagedDevice() {
+ if (client.subscribe(commandTopic)) {
+   Serial.println("subscribe to commands OK");
+ } else {
+   Serial.println("subscribe to commands FAILED");
+ }
+  
+ if (client.subscribe(rebootTopic)) {
+   Serial.println("subscribe to reboot OK");
+ } else {
+   Serial.println("subscribe to reboot FAILED");
+ }
+
+}
+
+void callback(char* topic, byte* payload, unsigned int payloadLength) { // called whenever the IoT platform sends data to the device
+ 
+ // data arrives with a topic (or subject) and the actual data. The topic can be used to direct the program to do specific things with the data
+ Serial.print("callback invoked for topic: "); Serial.println(topic); // print out the topic of the data
+
+ if (strcmp (commandTopic, topic) == 0) { // if the topic of the recieved data is "iot-2/cmd/command/fmt/text" (see the Topic Definitions section above)
+    handleDataReception(payload, payloadLength);
+ }
+
+ if (strcmp (rebootTopic, topic) == 0) { // if the topic of the recieved data is "iotdm-1/mgmt/initiate/device/reboot" (see the Topic Definitions section above)
+   Serial.println("Rebooting...");
+   ESP.restart();
+ }
+
+}
+
+void handleDataReception(byte* payload, unsigned int payloadLength) {
+  Serial.println("Set LEDs");
+    const size_t bufferSize = JSON_OBJECT_SIZE(5) + 30;
+    DynamicJsonBuffer jsonBuffer(bufferSize);
+    const char* json = (char*)payload;
+    JsonObject& root = jsonBuffer.parseObject(json);
+    // The received json object looks like this {"A":1, "R":255, "G":255, "B":255} or {"R":255, "G":255, "B":255}.
+    // This code allows for the "A" value to be optional. If ommited then the colour is applied to ALL pixels
+    int LEDAddress = root["LEDAddress"]; 
+    int Red = root["Red"]; 
+    int Green = root["Green"]; 
+    int Blue = root["Blue"];
+    Serial.println(LEDAddress);
+    Serial.println(Red);
+    Serial.println(Green);
+    Serial.println(Blue);
+  
+    if(LEDAddress >= 1 && Red >= 0 && Green >= 0 && Blue >= 0){
+      //change the colour of the specified LED (if the colour AND position has been sent)
+      Serial.print("Set specific LEDs");
+      pixels.setPixelColor(LEDAddress -1, pixels.Color(Red,Green,Blue));
+      pixels.show();
+    } else if (Red >= 0 && Green >= 0 && Blue >= 0){
+      //change the colour of all LEDs in any attached pixels if position (A) has not been sent
+      Serial.print("Set all LEDs");
+      for(uint16_t i=0; i<pixels.numPixels(); i++) {
+        pixels.setPixelColor(i, pixels.Color(Red,Green,Blue));
+        pixels.show();
+      }
+    } else {
+      Serial.println("Incorrect data received"); 
+    }
+}
+
+// set all the pixels to Red
+void setLEDpixelsColour(){
+  for(uint16_t i=0; i<pixels.numPixels(); i++) {
+        pixels.setPixelColor(i, pixels.Color(255,0,0));
+        pixels.show();
+      }
+}
+ 
