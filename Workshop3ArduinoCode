@@ -14,13 +14,14 @@
 
 
 //-------- Customise these values -----------
-const char* ssid = "[wifi network name here]";
-const char* password = "[wifi password here]";
 
-#define ORG "[orgname here]"
+const char* ssid = "[wifinamehere]";
+const char* password = "[wifipasswordhere]";
+
+#define ORG "[orgnamehere]"
 #define DEVICE_TYPE "wemos"
 #define DEVICE_ID "IoTWorkshopDevice"
-#define TOKEN "[token here]"
+#define TOKEN "[IoTtokenhere]"
 
 //LED (Neopixel) setup
 #define LED_CONTROL_PIN D1
@@ -32,6 +33,8 @@ const char* password = "[wifi password here]";
 
 int CURRENT_INPUT_PIN_VALUE = 0;
 int NEW_INPUT_PIN_VALUE = 0;
+
+char dataString[300];
 
 char server[] = ORG ".messaging.internetofthings.ibmcloud.com";
 char authMethod[] = "use-token-auth";
@@ -70,9 +73,11 @@ void loop() { // the loop function is a standard function that is run continuous
 
   if(CURRENT_INPUT_PIN_VALUE==0 && NEW_INPUT_PIN_VALUE==1){
     CURRENT_INPUT_PIN_VALUE=1;
+    Serial.println("Pin=1");
     publishData(1); //input pin has been set "HIGH"
   } else if (CURRENT_INPUT_PIN_VALUE==1 && NEW_INPUT_PIN_VALUE==0) {
     CURRENT_INPUT_PIN_VALUE=0;
+    Serial.println("Pin=0");
     publishData(0); //input pin has been set "LOW"
   } else {
     //do nothing
@@ -87,13 +92,14 @@ void loop() { // the loop function is a standard function that is run continuous
 // create a connection to wifi
 void wifiConnect() {
  Serial.print("Connecting to "); Serial.print(ssid);
- setLEDpixelsColour();
+ setLEDpixelsRed();
  WiFi.begin(ssid, password);
  while (WiFi.status() != WL_CONNECTED) {
    delay(500);
    Serial.print(".");
  }
  Serial.println("WiFi connected, IP address: "); Serial.println(WiFi.localIP());
+ setLEDpixelsGreen();
 }
 
 // create a connection to the IoT platform
@@ -110,18 +116,25 @@ void IoTConnect() {
 
 // subscribe to the two Topics we are interested in. Many topics can be sent by the IoT platform. We subscribe
 void initManagedDevice() {
+ bool successfull = true;
  if (client.subscribe(commandTopic)) {
    Serial.println("subscribe to commands OK");
  } else {
    Serial.println("subscribe to commands FAILED");
+   successfull = false;
  }
   
  if (client.subscribe(rebootTopic)) {
    Serial.println("subscribe to reboot OK");
  } else {
    Serial.println("subscribe to reboot FAILED");
+   successfull = false;
  }
-
+ if (successfull == false){
+   setLEDpixelsBlue(); // subscriptions failed
+ } else {
+   setLEDpixelsWhite(); // successfully connected to IoT and subscribed to topics
+ }
 }
 
 void publishData(int valueToSend) {
@@ -140,6 +153,7 @@ void publishData(int valueToSend) {
    } else {
      Serial.println("Publish FAILED");
    }
+  
 }
 
 void callback(char* topic, byte* payload, unsigned int payloadLength) { // called whenever the IoT platform sends data to the device
@@ -193,9 +207,30 @@ void handleDataReception(byte* payload, unsigned int payloadLength) {
 }
 
 // set all the pixels to Red
-void setLEDpixelsColour(){
+void setLEDpixelsRed(){
   for(uint16_t i=0; i<pixels.numPixels(); i++) {
         pixels.setPixelColor(i, pixels.Color(255,0,0));
+        pixels.show();
+      }
+}
+
+void setLEDpixelsGreen(){
+  for(uint16_t i=0; i<pixels.numPixels(); i++) {
+        pixels.setPixelColor(i, pixels.Color(0,255,0));
+        pixels.show();
+      }
+}
+
+void setLEDpixelsBlue(){
+  for(uint16_t i=0; i<pixels.numPixels(); i++) {
+        pixels.setPixelColor(i, pixels.Color(0,0,255));
+        pixels.show();
+      }
+}
+
+void setLEDpixelsWhite(){
+  for(uint16_t i=0; i<pixels.numPixels(); i++) {
+        pixels.setPixelColor(i, pixels.Color(255,255,255));
         pixels.show();
       }
 }
