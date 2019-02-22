@@ -8,7 +8,7 @@ The attendee is given an ESP8266 device, a strip of LEDs and a jumper cables for
 
 ## Content
 
-# Session 1
+### Session 1
 Overview of IoT
 Laptop setup/software and driver installation.
 Crearing an IBM Cloud account and "IoT Starter kit" which consists of an instance of NodeRED and an instance of the Watson IoT Platform service in the cloud.
@@ -16,12 +16,12 @@ Uploading code to the ESP8266
 Connecting the ESP8266 to wifi and the IoT Platform
 Sending a command from the cloud to the ESP8266 via the Watson IoT Platform.
 
-# Session 2
+### Session 2
 A guided intro to NodeRED (mostly reusing the concepts from the excellent official NodeRED documentation).
 We do some advanced control of the LED strip which allows us to review the Ardino code we uploaded as well and see how the IoT platform works.
 We take a little look at controlling the LED stip connected to out "thing" using exteral data eg Twitter and mobile push notifications.
 
-# Session 3
+### Session 3
 Sending data from the thing to the cloud via the IoT platform.
 Update the Arduino code to send (publish) data to the IoT platform.
 Create a NodeRED flow to handle recieveibg and sendind data from/to the thing.
