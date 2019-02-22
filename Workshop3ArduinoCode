@@ -14,27 +14,26 @@
 
 
 //-------- Customise these values -----------
-
 const char* ssid = "[wifinamehere]";
 const char* password = "[wifipasswordhere]";
 
 #define ORG "[orgnamehere]"
-#define DEVICE_TYPE "wemos"
+#define DEVICE_TYPE "esp8266"
 #define DEVICE_ID "IoTWorkshopDevice"
-#define TOKEN "[IoTtokenhere]"
+#define TOKEN "[devicetokenhere]"
 
 //LED (Neopixel) setup
 #define LED_CONTROL_PIN D1
 #define NUMBER_OF_LEDS_CONNECTED 3 
 
 //Input setup
-#define INPUT_PIN D8 //this pin is "LOW" by default and will go "HIGH" if we connect it to the 5V pin
+ #define INPUT_PIN D8 //this pin is "LOW" by default and will go "HIGH" if we connect it to the 5V pin
 //-------- Customise the above values --------
 
-int CURRENT_INPUT_PIN_VALUE = 0;
-int NEW_INPUT_PIN_VALUE = 0;
+ int CURRENT_INPUT_PIN_VALUE = 0;
+ int NEW_INPUT_PIN_VALUE = 0;
 
-char dataString[300];
+ char dataString[300];
 
 char server[] = ORG ".messaging.internetofthings.ibmcloud.com";
 char authMethod[] = "use-token-auth";
@@ -45,7 +44,7 @@ char clientId[] = "d:" ORG ":" DEVICE_TYPE ":" DEVICE_ID;
 // These lines of text are what the topics of the messages sent with from the IoT platform that we are interested in receiving. 
 // These are defined to some extent by the platform being used.
 const char rebootTopic[] = "iotdm-1/mgmt/initiate/device/reboot";
-const char commandTopic[] = "iot-2/cmd/command/fmt/text";
+const char commandTopic[] = "iot-2/cmd/command/fmt/json";
 const char publishTopic[] = "iot-2/evt/status/fmt/json";
 
 void callback(char* topic, byte* payload, unsigned int payloadLength);
@@ -62,15 +61,16 @@ void setup() {                            // the setup function is a standard fu
  wifiConnect();                           // connect to wifi
  IoTConnect();                            // connect to the the IoT platform
  initManagedDevice();                     // subscribe to the relevant IoT channels on the IoT platform
- pinMode(INPUT_PIN, INPUT);
+  pinMode(INPUT_PIN, INPUT);
 }
 
 void loop() { // the loop function is a standard function that is run continuously by the Arduino
  // If we need to do stuff continuously, put it here
 
   //Test input pin value
-  NEW_INPUT_PIN_VALUE = digitalRead(INPUT_PIN);
+   NEW_INPUT_PIN_VALUE = digitalRead(INPUT_PIN);
 
+  
   if(CURRENT_INPUT_PIN_VALUE==0 && NEW_INPUT_PIN_VALUE==1){
     CURRENT_INPUT_PIN_VALUE=1;
     Serial.println("Pin=1");
@@ -82,6 +82,7 @@ void loop() { // the loop function is a standard function that is run continuous
   } else {
     //do nothing
   }
+  
  
  if (!client.loop()) {    // if we loose the connection to the client
    IoTConnect();          // try to connect again
