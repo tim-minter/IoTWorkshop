@@ -6,7 +6,7 @@ I have run these fortnightly in Brighton. The first takes approx 2.5 hours, the 
 
 The attendee is given an ESP8266 device, a strip of LEDs and a jumper cables for the duration of the course.
 
-# The contents is as follows:
+## Content
 
 # Session 1
 Overview of IoT
